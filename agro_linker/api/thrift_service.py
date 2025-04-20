@@ -1,5 +1,10 @@
-from models import ThriftGroup, ThriftPayout, ThriftContribution
 from django.db.models import Sum
+from ..schemas import *
+from ..models import *
+from agro_linker.api import *
+from ninja import Router
+
+router = Router(tags=["Notification"])
 
 
 # services/thrift_service.py

@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
-from .models import Farmer, Product, Buyer
+from agro_linker.models import *
+
 
 User = get_user_model()
 
@@ -22,12 +23,12 @@ class FarmerSerializer(serializers.ModelSerializer):
     user = UserSerializer()
     
     class Meta:
-        model = Farmer
+        model = FarmerProfile
         fields = '__all__'
 
 class BuyerSerializer(serializers.ModelSerializer):
     user = UserSerializer()
     
     class Meta:
-        model = Buyer
+        model = BuyerProfile
         fields = '__all__'

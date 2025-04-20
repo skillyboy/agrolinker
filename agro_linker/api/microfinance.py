@@ -1,37 +1,28 @@
 from django.db import transaction
 from django.shortcuts import get_object_or_404
 from ninja.errors import HttpError
-from .models import LoanApplication, LoanRepayment, FarmerProfile
-from .schemas import LoanApplicationIn, LoanApplicationOut, LoanRepaymentIn, LoanRepaymentOut
 from typing import List
 from .auth import AuthBearer
-from .notification import notify_loan_update
-
+# from .notification import notify_loan_update  
+from ..schemas import *
 from django.http import HttpRequest
-from django.views.decorators.csrf import csrf_exempt
-from django.utils.decorators import method_decorator
-
-api = Router(tags=["Microfinance"])
-
-
-
-
-
 import hashlib
 import hmac
 import logging
 from datetime import datetime, timedelta
 from django.conf import settings
-from django.db import transaction
-from django.shortcuts import get_object_or_404
-from ninja.errors import HttpError
-from .models import LoanApplication, LoanRepayment, FarmerProfile, RepaymentSchedule
-from .schemas import LoanApplicationIn, LoanApplicationOut, LoanRepaymentIn, LoanRepaymentOut
-from typing import List
 import uuid
 import json
-
+from django.db import transaction
+from django.http import JsonResponse
+from django.contrib.auth.models import User
+from ninja import Router
+from ..models import *
+from agro_linker.api import *
 logger = logging.getLogger(__name__)
+
+
+router = Router(tags=["Microfinance"])
 
 # Helper Functions Implementation
 def generate_loan_reference():
@@ -103,7 +94,7 @@ def log_repayment_error(payload: LoanRepaymentIn, error: str):
     logger.error(json.dumps(error_data))
 
 # API Endpoints Implementation
-@api.post("/loans/apply", auth=AuthBearer(), response={201: LoanApplicationOut, 400: dict})
+@router.post("/loans/apply", auth=AuthBearer(), response={201: LoanApplicationOut, 400: dict})
 def apply_for_loan(request, payload: LoanApplicationIn):
     """
     Submit a loan application
@@ -133,11 +124,26 @@ def apply_for_loan(request, payload: LoanApplicationIn):
         logger.error(f"Loan application failed: {str(e)}")
         raise HttpError(400, "Failed to process loan application")
 
-@method_decorator(csrf_exempt, name='dispatch')
-@api.post("/loans/repay", response={200: dict, 400: dict, 404: dict}, auth=None)
+@router.get("/loans/status", auth=AuthBearer(), response=List[LoanApplicationOut])
+def check_loan_status(request):
+    """
+    Get all loan applications for the farmer with optimized query
+    """
+    farmer = get_object_or_404(FarmerProfile, user=request.user)
+    loans = LoanApplication.objects.filter(
+        farmer=farmer
+    ).select_related('farmer').only(
+        'id', 'amount', 'purpose', 'status', 
+        'application_date', 'approval_date'
+    ).order_by('-application_date')
+    
+    return loans
+
+@router.post("/loans/repay", response={200: dict, 400: dict, 404: dict}, auth=None)
 def record_repayment(request, payload: LoanRepaymentIn):
     """
     Webhook for MFI to record repayments
+    Includes HMAC signature verification for security
     """
     if not verify_webhook_signature(request):
         raise HttpError(401, "Unauthorized")
@@ -163,10 +169,8 @@ def record_repayment(request, payload: LoanRepaymentIn):
                 payment_method=payload.payment_method
             )
             
-            # Update repayment schedule
             update_repayment_schedule(loan, repayment)
             
-            # Update loan status
             loan.amount_paid = (loan.amount_paid or 0) + payload.amount
             if loan.amount_paid >= loan.amount:
                 loan.status = 'repaid'
@@ -178,7 +182,6 @@ def record_repayment(request, payload: LoanRepaymentIn):
                 "success": True,
                 "balance": max(0, loan.amount - loan.amount_paid)
             }
-            
     except Exception as e:
         log_repayment_error(payload, str(e))
         raise HttpError(400, f"Payment processing failed: {str(e)}")
@@ -205,136 +208,7 @@ def update_repayment_schedule(loan: LoanApplication, repayment: LoanRepayment):
         schedule.save()
         remaining_amount -= payment_amount
 
-# Additional Helper Functions
-def notify_loan_update(loan: LoanApplication):
-    """
-    Send notification about loan status update
-    """
-    # Implementation would depend on your notification system
-    # Could be email, SMS, or push notification
-    notification_message = (
-        f"Loan {loan.reference_id} update: "
-        f"Status changed to {loan.status}. "
-        f"Amount paid: {loan.amount_paid}/{loan.amount}"
-    )
-    
-    # Example using Django's async task system
-    from .tasks import send_notification
-    send_notification.delay(
-        user_id=loan.farmer.user.id,
-        message=notification_message
-    )
-
-
-
-
-
-
-
-
-@api.post("/loans/apply", auth=AuthBearer(), response={201: LoanApplicationOut, 400: dict})
-def apply_for_loan(request, payload: LoanApplicationIn):
-    """
-    Submit a loan application
-    Required: amount, purpose, repayment_period_months
-    Optional: collateral_details
-    """
-    farmer = get_object_or_404(FarmerProfile, user=request.user)
-    
-    # Check for pending applications using exists() for better performance
-    if LoanApplication.objects.filter(farmer=farmer, status='pending').exists():
-        raise HttpError(400, "You already have a pending application")
-    
-    # Validate loan amount against farmer's potential (could be moved to serializer)
-    max_loan_amount = farmer.get_credit_limit()  # Assuming this method exists
-    if payload.amount > max_loan_amount:
-        raise HttpError(400, f"Amount exceeds your credit limit of {max_loan_amount}")
-    
-    with transaction.atomic():
-        loan = LoanApplication.objects.create(
-            farmer=farmer,
-            **payload.dict(),
-            status='pending',
-            reference_id=generate_loan_reference()  # Implement this function
-        )
-        
-        # Initialize repayment schedule
-        create_repayment_schedule(loan)  # Implement this function
-    
-    return 201, loan
-
-@api.get("/loans/status", auth=AuthBearer(), response=List[LoanApplicationOut])
-def check_loan_status(request):
-    """
-    Get all loan applications for the farmer with optimized query
-    """
-    farmer = get_object_or_404(FarmerProfile, user=request.user)
-    loans = LoanApplication.objects.filter(
-        farmer=farmer
-    ).select_related('farmer').only(
-        'id', 'amount', 'purpose', 'status', 
-        'application_date', 'approval_date'
-    ).order_by('-application_date')
-    
-    return loans
-
-@api.post("/loans/repay", 
-          response={200: dict, 400: dict, 404: dict},
-          auth=None)  # Public endpoint for webhooks
-def record_repayment(request, payload: LoanRepaymentIn):
-    """
-    Webhook for MFI to record repayments
-    Includes HMAC signature verification for security
-    """
-    # Verify webhook signature (implement verify_webhook_signature)
-    if not verify_webhook_signature(request):
-        raise HttpError(401, "Unauthorized")
-    
-    try:
-        with transaction.atomic():
-            loan = get_object_or_404(
-                LoanApplication, 
-                reference_id=payload.loan_reference,
-                status__in=['approved', 'partially_paid']
-            )
-            
-            # Prevent duplicate transactions
-            if LoanRepayment.objects.filter(
-                transaction_reference=payload.transaction_reference
-            ).exists():
-                raise HttpError(400, "Duplicate transaction detected")
-            
-            repayment = LoanRepayment.objects.create(
-                loan=loan,
-                amount=payload.amount,
-                transaction_reference=payload.transaction_reference,
-                payment_date=payload.payment_date,
-                payment_method=payload.payment_method
-            )
-            
-            # Update loan status atomically
-            loan.amount_paid = (loan.amount_paid or 0) + payload.amount
-            if loan.amount_paid >= loan.amount:
-                loan.status = 'repaid'
-            else:
-                loan.status = 'partially_paid'
-            loan.save()
-            
-            # Trigger notification
-            notify_loan_update(loan)  # Implement this function
-            
-            return 200, {
-                "success": True,
-                "balance": loan.amount - loan.amount_paid
-            }
-            
-    except Exception as e:
-        log_repayment_error(payload, str(e))  # Implement this function
-        raise HttpError(400, f"Payment processing failed: {str(e)}")
-
-@api.get("/loans/history", 
-         auth=AuthBearer(), 
-         response=List[LoanApplicationOut])
+@router.get("/loans/history", auth=AuthBearer(), response=List[LoanApplicationOut])
 def loan_history(request):
     """
     Get complete loan history for farmer with pagination
@@ -353,9 +227,7 @@ def loan_history(request):
     
     return loans
 
-@api.get("/loans/{loan_id}/repayments", 
-         auth=AuthBearer(),
-         response=List[LoanRepaymentOut])
+@router.get("/loans/{loan_id}/repayments", auth=AuthBearer(), response=List[LoanRepaymentOut])
 def get_loan_repayments(request, loan_id: int):
     """
     Get all repayments for a specific loan
@@ -368,4 +240,3 @@ def get_loan_repayments(request, loan_id: int):
     )
     
     return loan.repayments.all().order_by('payment_date')
-

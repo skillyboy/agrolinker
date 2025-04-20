@@ -6,13 +6,8 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import get_user_model, authenticate
-from models import *
-from serializers import (
-    UserSerializer,
-    FarmerSerializer,
-    BuyerSerializer,
-    LoginSerializer
-)
+from agro_linker.models import *
+from agro_linker.serializers import *
 from django.shortcuts import render
 
 User = get_user_model()
@@ -23,6 +18,21 @@ def index(request):
     return render(request, 'index.html')
 
 
+class UserManager(BaseUserManager):
+    def create_user(self, phone, password=None, **extra_fields):
+        if not phone:
+            raise ValueError('Phone number is required')
+        user = self.model(phone=phone, **extra_fields)
+        user.set_password(password)
+        user.save(using=self._db)
+        return user
+
+    def create_superuser(self, phone, password):
+        user = self.create_user(phone, password)
+        user.is_staff = True
+        user.is_superuser = True
+        user.save(using=self._db)
+        return user
 
 
 class AuthViewSet(viewsets.ViewSet):

@@ -3,7 +3,7 @@ from django.db import transaction
 from django.http import HttpRequest
 from agro_linker.models import Product, Order, FarmerProfile
 from agro_linker.api.auth import AuthBearer  # Assuming you have a proper auth implementation
-from .schemas import *
+from ..schemas import *
 from datetime import datetime
 from django.db.models import Q
 from ninja import Router

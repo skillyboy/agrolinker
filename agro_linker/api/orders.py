@@ -12,8 +12,8 @@ from agro_linker.api.market import *
 from agro_linker.models import *
 from agro_linker.api.market import *
 from agro_linker.api.bid import *
-from agro_linker.api.schemas import *
-from .schemas import *
+from agro_linker.schemas import *
+from ..schemas import *
 from .auth import *
 from .notification import *
 from .chat import *

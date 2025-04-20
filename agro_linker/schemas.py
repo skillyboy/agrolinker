@@ -162,6 +162,40 @@ class BidIn(Schema):
 class StatusUpdate(Schema):
     status: str
 
+class WalletOut(Schema):
+    id: str
+    balance: float
+    created_at: datetime
+
+
+class WalletIn(Schema):
+    amount: float   
+    transaction_type: str
+    transaction_reference: str
+    transaction_date: datetime  
+
+class WalletTransactionOut(Schema):
+    id: str
+    amount: float
+    transaction_type: str
+    transaction_reference: str
+    transaction_date: datetime  
+
+class ContractOut(Schema):
+    id: str
+    buyer: UserOut
+    farmer: FarmerProfileOut
+    product: ProductOut
+    quantity: float
+    price: float    
+    created_at: datetime
+
+
+
+
+
+
+
 class WeatherDataOut(Schema):
     id: int
     location: str
@@ -192,7 +226,6 @@ class WeatherFilter(Schema):
     start_date: Optional[date] = None
     end_date: Optional[date] = None
 
-
 class ChatMessageOut(Schema):
     id: str
     sender: UserOut
@@ -213,6 +246,12 @@ class ChatRoomIn(Schema):
     participant_ids: List[str]  
 
 
+class LoanRepaymentOut(Schema):
+    id: str
+    loan_reference: str
+    amount: float
+    transaction_reference: str
+    payment_date: datetime
 
 
 

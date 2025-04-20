@@ -1,7 +1,8 @@
 # project/urls.py
-from django.urls import path
-from agro_linker.api.api import api
+from django.contrib import admin
+from django.urls import path, include
 
 urlpatterns = [
-    path("api/", api.urls),
+    path('admin/', admin.site.urls),
+    path('', include('agro_linker.urls')),
 ]

@@ -6,9 +6,9 @@ from ninja import Router, Schema, Query
 from django.shortcuts import get_object_or_404
 from django.http import HttpRequest
 from ..models import WeatherData
-from .schemas import WeatherDataOut, WeatherDataIn, WeatherForecastOut, WeatherFilter
 from datetime import datetime, date, timedelta
 from random import uniform
+from ..schemas import *
 
 router = Router(tags=["Weather Data"])
 

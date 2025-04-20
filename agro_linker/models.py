@@ -5,7 +5,16 @@ from django.core.validators import MinValueValidator, MaxValueValidator, RegexVa
 from django.utils.translation import gettext_lazy as _
 from django.utils import timezone
 import uuid
+import requests
 import json
+import logging
+from time import sleep
+from django.conf import settings
+from django.utils.translation import gettext_lazy as _
+from django.db import models
+from datetime import datetime
+
+logger = logging.getLogger(__name__)
 from django.core.exceptions import ValidationError
 from django.db.models import F, Sum
 
@@ -77,6 +86,9 @@ class User(AbstractBaseUser, PermissionsMixin):
     
     def __str__(self):
         return f"{self.phone} ({self.get_role_display()})"
+
+
+
 
 class Cooperative(models.Model):
     name = models.CharField(max_length=100)
@@ -155,6 +167,14 @@ class BuyerProfile(models.Model):
     
     def __str__(self):
         return f"{self.company_name} (Buyer)"
+    
+
+
+
+
+
+
+# ===========================PRODUCT======================================
 
 class ProductCategory(models.Model):
     name = models.CharField(max_length=50)
@@ -169,6 +189,8 @@ class ProductCategory(models.Model):
     
     def __str__(self):
         return self.name
+    
+
 
 class Product(models.Model):
     class Status(models.TextChoices):
@@ -273,6 +295,56 @@ class ProductReview(models.Model):
     def __str__(self):
         return f"{self.rating}★ review for {self.product.name}"
 
+class Wallet(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    balance = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.user.phone} - {self.balance}"
+
+class WalletTransaction(models.Model):
+    wallet = models.ForeignKey(Wallet, on_delete=models.CASCADE)
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    transaction_type = models.CharField(max_length=10)
+    transaction_reference = models.CharField(max_length=100)
+    transaction_date = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.wallet.user.phone} - {self.amount}"  
+    
+
+class Contract(models.Model):
+    buyer = models.ForeignKey(User, on_delete=models.CASCADE)
+    farmer = models.ForeignKey(FarmerProfile, on_delete=models.CASCADE)
+    product = models.ForeignKey(Product, on_delete=models.CASCADE)
+    quantity     = models.DecimalField(max_digits=10, decimal_places=2)
+    price = models.DecimalField(max_digits=10, decimal_places=2)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+
+
+class CropListing(models.Model):
+    farmer = models.ForeignKey(FarmerProfile, on_delete=models.CASCADE)
+    product = models.ForeignKey(Product, on_delete=models.CASCADE)
+    quantity = models.DecimalField(max_digits=10, decimal_places=2)
+    price = models.DecimalField(max_digits=10, decimal_places=2)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.farmer.phone} - {self.product.name}"
+
+
+class Bid(models.Model):
+    product = models.ForeignKey(Product, on_delete=models.CASCADE)
+    buyer = models.ForeignKey(User, on_delete=models.CASCADE)
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    quantity = models.DecimalField(max_digits=10, decimal_places=2)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.buyer.phone} - {self.product.name}"
+    
 class Offer(models.Model):
     class Status(models.TextChoices):
         PENDING = 'PENDING', _('Pending')
@@ -1018,70 +1090,151 @@ class ThriftLoanRepayment(models.Model):
     def __str__(self):
         return f"Repayment #{self.installment_number} for Loan #{self.loan.id}"
 
-class MobileMoneyProcessor:
+
+
+class BaseIntegration:
+    """Base class for all integration services"""
+    MAX_RETRIES = 3
+    RETRY_DELAY = 1  # seconds
+    
     def __init__(self, provider):
-        self.provider = provider  # MTN, Airtel, etc.
-        self.config = settings.MOBILE_MONEY_PROVIDERS.get(provider, {})
+        self.provider = provider
+        self.config = self._get_provider_config()
         
+    def _get_provider_config(self):
+        """Get configuration for the specified provider"""
+        config_key = f"{self.CONFIG_NAMESPACE}_PROVIDERS"
+        return getattr(settings, config_key, {}).get(self.provider, {})
+    
+    def _make_request(self, method, url, **kwargs):
+        """Generic request method with retry logic"""
+        headers = kwargs.pop('headers', {})
+        headers.update(self._get_default_headers())
+        
+        for attempt in range(self.MAX_RETRIES):
+            try:
+                response = requests.request(
+                    method,
+                    url,
+                    headers=headers,
+                    timeout=self.config.get('timeout', 30),
+                    **kwargs
+                )
+                response.raise_for_status()
+                return response.json()
+            except requests.exceptions.RequestException as e:
+                if attempt == self.MAX_RETRIES - 1:
+                    logger.error(f"Request failed after {self.MAX_RETRIES} attempts: {str(e)}")
+                    raise
+                sleep(self.RETRY_DELAY * (attempt + 1))
+    
+    def _get_default_headers(self):
+        """Get default headers for the provider"""
+        return {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+        }
+
+class MobileMoneyProcessor(BaseIntegration):
+    CONFIG_NAMESPACE = 'MOBILE_MONEY'
+    
     def collect_contribution(self, phone, amount, reference):
+        """Process mobile money payment"""
         try:
-        if self.provider == 'mtn':
-                return self._process_momo(phone, amount, reference)
-            elif self.provider == 'airtel':
-                return self._process_airtel(phone, amount, reference)
-            # Add other providers as needed
+            processor_method = getattr(self, f'_process_{self.provider.lower()}', None)
+            if processor_method:
+                return processor_method(phone, amount, reference)
+            raise ValueError(f"Unsupported provider: {self.provider}")
         except Exception as e:
             logger.error(f"Mobile money processing failed: {str(e)}")
-            return {'status': 'failed', 'error': str(e)}
+            return {
+                'status': 'failed',
+                'error': str(e),
+                'provider': self.provider
+            }
     
-    def _process_momo(self, phone, amount, reference):
+    def _process_mtn(self, phone, amount, reference):
         payload = {
             'subscriber': phone,
             'amount': str(amount),
             'reference': reference,
             'callback_url': self.config.get('callback_url')
         }
-        headers = {
-            'Authorization': f"Bearer {self.config.get('api_key')}",
-            'Content-Type': 'application/json'
-        }
-        response = requests.post(
+        return self._make_request(
+            'POST',
             self.config.get('api_url'),
             json=payload,
-            headers=headers
+            headers={
+                'Authorization': f"Bearer {self.config.get('api_key')}"
+            }
         )
-        return response.json()
+    
+    def _process_airtel(self, phone, amount, reference):
+        payload = {
+            'msisdn': phone,
+            'amount': str(amount),
+            'transaction_id': reference,
+            'callback': self.config.get('callback_url')
+        }
+        return self._make_request(
+            'POST',
+            self.config.get('api_url'),
+            data=payload,
+            headers={
+                'Authorization': f"Basic {self.config.get('api_key')}"
+            }
+        )
     
     def verify_transaction(self, transaction_id):
+        """Verify a mobile money transaction"""
         try:
-            headers = {
-                'Authorization': f"Bearer {self.config.get('api_key')}",
-                'Content-Type': 'application/json'
-            }
-            response = requests.get(
-                f"{self.config.get('api_url')}/{transaction_id}",
-                headers=headers
-            )
-            return response.json()
+            verifier_method = getattr(self, f'_verify_{self.provider.lower()}', None)
+            if verifier_method:
+                return verifier_method(transaction_id)
+            raise ValueError(f"Unsupported provider: {self.provider}")
         except Exception as e:
             logger.error(f"Transaction verification failed: {str(e)}")
-            return {'status': 'failed', 'error': str(e)}
+            return {
+                'status': 'failed',
+                'error': str(e),
+                'provider': self.provider
+            }
+    
+    def _verify_mtn(self, transaction_id):
+        return self._make_request(
+            'GET',
+            f"{self.config.get('api_url')}/{transaction_id}",
+            headers={
+                'Authorization': f"Bearer {self.config.get('api_key')}"
+            }
+        )
+    
+    def _verify_airtel(self, transaction_id):
+        return self._make_request(
+            'GET',
+            f"{self.config.get('api_url')}/status/{transaction_id}",
+            headers={
+                'Authorization': f"Basic {self.config.get('api_key')}"
+            }
+        )
 
-class SMSGateway:
-    def __init__(self, provider):
-        self.provider = provider  # Twilio, Africastalking, etc.
-        self.config = settings.SMS_PROVIDERS.get(provider, {})
-        
+class SMSGateway(BaseIntegration):
+    CONFIG_NAMESPACE = 'SMS'
+    
     def send_sms(self, phone, message):
+        """Send SMS message"""
         try:
-            if self.provider == 'africastalking':
-                return self._send_africastalking(phone, message)
-            elif self.provider == 'twilio':
-                return self._send_twilio(phone, message)
-            # Add other providers as needed
+            sender_method = getattr(self, f'_send_{self.provider.lower()}', None)
+            if sender_method:
+                return sender_method(phone, message)
+            raise ValueError(f"Unsupported provider: {self.provider}")
         except Exception as e:
             logger.error(f"SMS sending failed: {str(e)}")
-            return {'status': 'failed', 'error': str(e)}
+            return {
+                'status': 'failed',
+                'error': str(e),
+                'provider': self.provider
+            }
     
     def _send_africastalking(self, phone, message):
         payload = {
@@ -1090,81 +1243,197 @@ class SMSGateway:
             'message': message,
             'from': self.config.get('sender_id')
         }
-        headers = {
-            'apiKey': self.config.get('api_key'),
-            'Content-Type': 'application/x-www-form-urlencoded',
-            'Accept': 'application/json'
-        }
-        response = requests.post(
+        return self._make_request(
+            'POST',
             self.config.get('api_url'),
             data=payload,
-            headers=headers
+            headers={
+                'apiKey': self.config.get('api_key'),
+                'Content-Type': 'application/x-www-form-urlencoded'
+            }
         )
-        return response.json()
     
-class EmailService:
-    def __init__(self, provider):
-        self.provider = provider  # SendGrid, Mailgun, etc.
-        self.config = settings.EMAIL_PROVIDERS.get(provider, {})
-        
-    def send_email(self, to, subject, body):
+    def _send_twilio(self, phone, message):
+        payload = {
+            'To': phone,
+            'From': self.config.get('sender_id'),
+            'Body': message
+        }
+        return self._make_request(
+            'POST',
+            self.config.get('api_url'),
+            data=payload,
+            auth=(self.config.get('account_sid'), self.config.get('auth_token'))
+        )
+
+class EmailService(BaseIntegration):
+    CONFIG_NAMESPACE = 'EMAIL'
+    
+    def send_email(self, to, subject, body, html_body=None):
+        """Send email with optional HTML content"""
         try:
-            if self.provider == 'sendgrid':
-                return self._send_sendgrid(to, subject, body)
-            elif self.provider == 'mailgun':
-                return self._send_mailgun(to, subject, body)
-            # Add other providers as needed
+            sender_method = getattr(self, f'_send_{self.provider.lower()}', None)
+            if sender_method:
+                return sender_method(to, subject, body, html_body)
+            raise ValueError(f"Unsupported provider: {self.provider}")
         except Exception as e:
             logger.error(f"Email sending failed: {str(e)}")
-            return {'status': 'failed', 'error': str(e)}
+            return {
+                'status': 'failed',
+                'error': str(e),
+                'provider': self.provider
+            }
     
-    def _send_sendgrid(self, to, subject, body):
+    def _send_sendgrid(self, to, subject, body, html_body=None):
+        content = [{
+            'type': 'text/plain',
+            'value': body
+        }]
+        if html_body:
+            content.append({
+                'type': 'text/html',
+                'value': html_body
+            })
+        
         payload = {
             'personalizations': [{
                 'to': [{'email': to}],
                 'subject': subject
             }],
             'from': {'email': self.config.get('from_email')},
-            'content': [{
-                'type': 'text/plain',
-                'value': body
-            }]
+            'content': content
         }
-        headers = {
-            'Authorization': f"Bearer {self.config.get('api_key')}",
-            'Content-Type': 'application/json'
-        }
-        response = requests.post(
+        return self._make_request(
+            'POST',
             self.config.get('api_url'),
             json=payload,
-            headers=headers
+            headers={
+                'Authorization': f"Bearer {self.config.get('api_key')}"
+            }
         )
-        return {'status': 'success', 'status_code': response.status_code}
+    
+    def _send_mailgun(self, to, subject, body, html_body=None):
+        data = {
+            'from': self.config.get('from_email'),
+            'to': to,
+            'subject': subject,
+            'text': body
+        }
+        if html_body:
+            data['html'] = html_body
+        
+        return self._make_request(
+            'POST',
+            self.config.get('api_url'),
+            auth=('api', self.config.get('api_key')),
+            data=data
+        )
 
 class AgroAnalytics(models.Model):
+    """Consolidated platform analytics data"""
     date = models.DateField(unique=True)
-    active_farmers = models.PositiveIntegerField()
-    active_buyers = models.PositiveIntegerField()
-    products_listed = models.PositiveIntegerField()
-    transactions_completed = models.PositiveIntegerField()
-    total_transaction_value = models.DecimalField(max_digits=15, decimal_places=2)
-    average_product_price = models.DecimalField(max_digits=10, decimal_places=2)
-    new_registrations = models.PositiveIntegerField()
+    active_farmers = models.PositiveIntegerField(default=0)
+    active_buyers = models.PositiveIntegerField(default=0)
+    products_listed = models.PositiveIntegerField(default=0)
+    transactions_completed = models.PositiveIntegerField(default=0)
+    total_transaction_value = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+    average_product_price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    new_registrations = models.PositiveIntegerField(default=0)
+    thrift_groups_active = models.PositiveIntegerField(default=0)
+    loans_disbursed = models.PositiveIntegerField(default=0)
+    loan_amount_disbursed = models.DecimalField(max_digits=15, decimal_places=2, default=0)
     
     class Meta:
         verbose_name = _('agro analytics')
         verbose_name_plural = _('agro analytics')
         ordering = ['-date']
+        indexes = [
+            models.Index(fields=['date']),
+        ]
     
     @classmethod
     def generate_daily_report(cls):
-        # Implement daily report generation
-        pass
+        """Generate daily analytics report"""
+        from django.db.models import Count, Sum, Avg
+        from django.utils import timezone
+        
+        today = timezone.now().date()
+        
+        # Prevent duplicate entries
+        if cls.objects.filter(date=today).exists():
+            return
+        
+        # Calculate metrics
+        from .models import (
+            User, Product, Order, 
+            ThriftGroup, LoanApplication
+        )
+        
+        metrics = {
+            'date': today,
+            'active_farmers': User.objects.filter(
+                role=User.Role.FARMER, 
+                is_active=True
+            ).count(),
+            'active_buyers': User.objects.filter(
+                role=User.Role.BUYER, 
+                is_active=True
+            ).count(),
+            'products_listed': Product.objects.filter(
+                status=Product.Status.ACTIVE
+            ).count(),
+            'transactions_completed': Order.objects.filter(
+                payment_status=Order.PaymentStatus.PAID,
+                created_at__date=today
+            ).count(),
+            'thrift_groups_active': ThriftGroup.objects.filter(
+                is_active=True
+            ).count(),
+            'loans_disbursed': LoanApplication.objects.filter(
+                status='disbursed',
+                disbursement_date__date=today
+            ).count()
+        }
+        
+        # Transaction values
+        transaction_data = Order.objects.filter(
+            payment_status=Order.PaymentStatus.PAID,
+            created_at__date=today
+        ).aggregate(
+            total_value=Sum(F('bid__amount') * F('bid__quantity')),
+            avg_price=Avg('bid__amount')
+        )
+        
+        metrics.update({
+            'total_transaction_value': transaction_data['total_value'] or 0,
+            'average_product_price': transaction_data['avg_price'] or 0
+        })
+        
+        # Loan amounts
+        loan_data = LoanApplication.objects.filter(
+            status='disbursed',
+            disbursement_date__date=today
+        ).aggregate(
+            total_amount=Sum('amount')
+        )
+        
+        metrics.update({
+            'loan_amount_disbursed': loan_data['total_amount'] or 0
+        })
+        
+        # New registrations
+        metrics['new_registrations'] = User.objects.filter(
+            created_at__date=today
+        ).count()
+        
+        # Create analytics record
+        cls.objects.create(**metrics)
     
     def __str__(self):
         return f"Analytics for {self.date}"
 
 class SystemSettings(models.Model):
+    """Configuration settings for the platform"""
     key = models.CharField(max_length=50, unique=True)
     value = models.JSONField()
     description = models.TextField(blank=True)
@@ -1174,11 +1443,21 @@ class SystemSettings(models.Model):
     class Meta:
         verbose_name = _('system setting')
         verbose_name_plural = _('system settings')
+        ordering = ['key']
+    
+    @classmethod
+    def get_setting(cls, key, default=None):
+        try:
+            setting = cls.objects.get(key=key, is_active=True)
+            return setting.value
+        except cls.DoesNotExist:
+            return default
     
     def __str__(self):
         return self.key
 
 class AuditLog(models.Model):
+    """System activity log for tracking important actions"""
     ACTION_CHOICES = [
         ('create', 'Create'),
         ('update', 'Update'),
@@ -1186,16 +1465,24 @@ class AuditLog(models.Model):
         ('login', 'Login'),
         ('logout', 'Logout'),
         ('payment', 'Payment'),
+        ('verification', 'Verification'),
+        ('api_call', 'API Call'),
     ]
     
-    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    user = models.ForeignKey(
+        'User', 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True
+    )
     action = models.CharField(max_length=20, choices=ACTION_CHOICES)
     model = models.CharField(max_length=50)
-    object_id = models.CharField(max_length=50)
+    object_id = models.CharField(max_length=50, blank=True)
     ip_address = models.GenericIPAddressField(null=True, blank=True)
     user_agent = models.TextField(blank=True)
     before_state = models.JSONField(null=True, blank=True)
     after_state = models.JSONField(null=True, blank=True)
+    metadata = models.JSONField(default=dict)
     timestamp = models.DateTimeField(auto_now_add=True)
     
     class Meta:
@@ -1205,60 +1492,16 @@ class AuditLog(models.Model):
         indexes = [
             models.Index(fields=['user', 'timestamp']),
             models.Index(fields=['model', 'object_id']),
+            models.Index(fields=['action', 'timestamp']),
         ]
     
+    @classmethod
+    def log_action(cls, **kwargs):
+        """Helper method to create audit log entries"""
+        try:
+            return cls.objects.create(**kwargs)
+        except Exception as e:
+            logger.error(f"Failed to create audit log: {str(e)}")
+    
     def __str__(self):
-        return f"{self.get_action_display()} on {self.model} by {self.user}"
-    
-
-
-
-# # integrations/mobile_money.py
-# class MobileMoneyProcessor:
-#     def __init__(self, provider):
-#         self.provider = provider  # MTN, Airtel, etc.
-        
-#     def collect_contribution(self, phone, amount):
-#         if self.provider == 'mtn':
-#             return self._process_momo(phone, amount, 'AGRO_THRIFT')
-#         # Other provider implementations...
-    
-#     def _process_momo(self, phone, amount, reference):
-#         # Actual API call to mobile money provider
-#         payload = {
-#             'subscriber': phone,
-#             'amount': str(amount),
-#             'reference': reference
-#         }
-#         response = requests.post(MTN_API_URL, json=payload)
-#         return response.json()
-    
-
-# # integrations/sms_gateway.py
-# class SMSGateway:
-#     def __init__(self, provider):
-#         self.provider = provider  # Twilio, Africastalking, etc.
-        
-#     def send_sms(self, phone, message):
-#         # Actual API call to SMS provider
-#         payload = {
-#             'to': phone,
-#             'message': message
-#         }
-#         response = requests.post(SMS_API_URL, json=payload)
-#         return response.json()
-    
-# # integrations/email_service.py
-# class EmailService:
-#     def __init__(self, provider):
-#         self.provider = provider  # SendGrid, Mailgun, etc.
-        
-#     def send_email(self, to, subject, body):
-#         # Actual API call to email provider
-#         payload = {
-#             'to': to,
-#             'subject': subject,
-#             'body': body
-#         }
-#         response = requests.post(EMAIL_API_URL, json=payload)   
-#         return response.json()
+        return f"{self.get_action_display()} on {self.model} by {self.user or 'System'}"
