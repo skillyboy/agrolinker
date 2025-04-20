@@ -1,0 +1,23 @@
+
+git add .
+git commit -m "iSearch and whatsapp"
+git push origin main
+
+git push -f origin master
+git push origin main --force
+git push origin main --force-with-lease
+
+git checkout master  #Switch to the Master Branch
+
+
+git init
+git add .
+git commit -m "Alert adjusted,"
+git branch -M main
+git remote add origin https://github.com/skillyboy/SanDiegoEcommerce.git
+git push -u origin main
+
+
+git remote add origin https://github.com/skillyboy/SanDiegoEcommerce.git
+git branch -M main
+git push -u origin main
