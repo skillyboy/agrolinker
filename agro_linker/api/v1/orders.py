@@ -3,17 +3,17 @@ from ninja.security import HttpBearer
 from typing import List
 from django.db import transaction
 from django.shortcuts import get_object_or_404
-from agro_linker.models import *
+from agro_linker.models.models import *
 import logging
 from django.http import HttpRequest
 from django.contrib.auth import authenticate
 from datetime import datetime
 from agro_linker.api.market import *
-from agro_linker.models import *
+from agro_linker.models.models import *
 from agro_linker.api.market import *
 from agro_linker.api.bid import *
 from agro_linker.schemas import *
-from ..schemas import *
+from ...schemas import *
 from .auth import *
 from .notification import *
 from .chat import *

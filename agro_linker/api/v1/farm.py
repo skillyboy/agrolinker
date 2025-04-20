@@ -8,7 +8,7 @@ from ninja import Router
 from ninja.security import HttpBearer
 from ninja import Query
 from ninja import Router
-from ..models import *
+from ..models.models import *
 from ..schemas import *
 
 # Create a router instead of a new API instance

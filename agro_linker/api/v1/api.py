@@ -2,11 +2,11 @@
 from ninja.security import APIKeyHeader
 from ninja import NinjaAPI
 from agro_linker.schemas import *
-from agro_linker.models import *
+from agro_linker.models.models import *
 
 class ApiKeyAuth(APIKeyHeader):
     def authenticate(self, request, key):
-        from agro_linker.models import APIToken
+        from agro_linker.models.models import APIToken
         try:
             return APIToken.objects.get(key=key).user
         except APIToken.DoesNotExist:

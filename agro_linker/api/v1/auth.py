@@ -3,7 +3,7 @@ from django.contrib.auth import authenticate
 from django.http import HttpRequest
 from typing import Optional
 
-from agro_linker.models import User  # Assuming your User model is here
+from agro_linker.models.models import User  # Assuming your User model is here
 from agro_linker.schemas import *  # Import relevant schemas
 
 

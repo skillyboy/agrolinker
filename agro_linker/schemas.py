@@ -1,7 +1,7 @@
 from ninja import Schema
 from datetime import datetime, date
 from typing import List, Optional
-from agro_linker.models import *
+from agro_linker.models.models import *
 from ninja import Schema
 from datetime import date
 from typing import Optional, List

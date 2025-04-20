@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
-from agro_linker.models import *
+from agro_linker.models.models import *
 
 
 User = get_user_model()

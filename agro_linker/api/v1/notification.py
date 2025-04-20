@@ -1,6 +1,6 @@
 from ninja import Router
 from agro_linker.schemas import *
-from agro_linker.models import *
+from agro_linker.models.models import *
 from agro_linker.api import *
 from ninja import Router
 router = Router(tags=["Notification"])

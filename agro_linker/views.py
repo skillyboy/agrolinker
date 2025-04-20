@@ -6,7 +6,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import get_user_model, authenticate
-from agro_linker.models import *
+from agro_linker.models.models import *
 from agro_linker.serializers import *
 from django.shortcuts import render
 

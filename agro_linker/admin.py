@@ -1,24 +1,54 @@
 from django.contrib import admin
-from django.contrib.auth.admin import UserAdmin
-from .models import *
-from django.contrib.auth.models import Group
+from .models.user import User, FarmerProfile, BuyerProfile
+from .models.models import Cooperative, Vehicle, LogisticsRequest, TrackingStatus, Notification, FarmerSubscription, CropCalendar, WeatherData, AgroAnalytics, SystemSettings
+from .models.market import ProductCategory, Product, ProductImage, ProductReview, CropListing, Bid, Offer, Order, OrderItem, PriceTrend
+from .models.finance import Wallet, WalletTransaction, Contract, SavingsAccount, SavingsTransaction, MobileMoneyProcessor, SMSGateway, LoanApplication, LoanRepayment, RepaymentSchedule, CropInsurance, InsuranceClaim
+from .models.thrift import ThriftGroup, ThriftMembership, ThriftContribution, ThriftPayout, ThriftCycle, ThriftMeeting, ThriftAttendance, ThriftPenalty, ThriftLoan, ThriftLoanRepayment
+from .models.chat import ChatRoom, ChatMessage
 
-
-@admin.register(FarmerProfile)
-class FarmerProfileAdmin(admin.ModelAdmin):
-    list_display = ('user', 'location')
-    # Add other configurations as needed
-
-@admin.register(Product)
-class ProductAdmin(admin.ModelAdmin):
-    list_display = ('name', 'price', 'farmer', 'category', 'created_at')
-    # Add other configurations as needed
-
-# Register other models similarly
+# Register models
+admin.site.register(User)
+admin.site.register(FarmerProfile)
+admin.site.register(BuyerProfile)
+admin.site.register(Cooperative)
+admin.site.register(Vehicle)
+admin.site.register(LogisticsRequest)
+admin.site.register(TrackingStatus)
+admin.site.register(Notification)
+admin.site.register(FarmerSubscription)
+admin.site.register(CropCalendar)
+admin.site.register(WeatherData)
+admin.site.register(AgroAnalytics)
+admin.site.register(SystemSettings)
+admin.site.register(ProductCategory)
+admin.site.register(Product)
+admin.site.register(ProductImage)
+admin.site.register(ProductReview)
+admin.site.register(CropListing)
+admin.site.register(Bid)
+admin.site.register(Offer)
 admin.site.register(Order)
 admin.site.register(OrderItem)
+admin.site.register(PriceTrend)
+admin.site.register(Wallet)
+admin.site.register(WalletTransaction)
+admin.site.register(Contract)
+admin.site.register(SavingsAccount)
+admin.site.register(SavingsTransaction)
+admin.site.register(LoanApplication)
+admin.site.register(LoanRepayment)
+admin.site.register(RepaymentSchedule)
+admin.site.register(CropInsurance)
+admin.site.register(InsuranceClaim)
+admin.site.register(ThriftGroup)
+admin.site.register(ThriftMembership)
+admin.site.register(ThriftContribution)
+admin.site.register(ThriftPayout)
+admin.site.register(ThriftCycle)
+admin.site.register(ThriftMeeting)
+admin.site.register(ThriftAttendance)
+admin.site.register(ThriftPenalty)
+admin.site.register(ThriftLoan)
+admin.site.register(ThriftLoanRepayment)
+admin.site.register(ChatRoom)
 admin.site.register(ChatMessage)
-admin.site.register(Notification)
-
-# Unregister Group if you don't need it
-# admin.site.unregister(Group)

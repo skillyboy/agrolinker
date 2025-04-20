@@ -1,6 +1,10 @@
+pip cache purge
+uvicorn main:app --reload
+uvicorn microservice.main:app --reload --host 0.0.0.0 --port 8001
+
 git add .
 git commit -m "Router"
-git push origin master
+git push origin main
 
 git push -f origin master
 git push origin main --force

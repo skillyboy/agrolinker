@@ -5,7 +5,7 @@ from typing import List, Optional
 from agro_linker.schemas import *
 from agro_linker.api.auth import AuthBearer
 from django.shortcuts import get_object_or_404
-from agro_linker.models import *
+from agro_linker.models.models import *
 from ..schemas import *
 
 

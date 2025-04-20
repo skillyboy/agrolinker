@@ -17,7 +17,7 @@ from django.db import transaction
 from django.http import JsonResponse
 from django.contrib.auth.models import User
 from ninja import Router
-from ..models import *
+from ..models.models import *
 from agro_linker.api import *
 logger = logging.getLogger(__name__)
 

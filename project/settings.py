@@ -4,7 +4,11 @@ from dotenv import load_dotenv
 from os import getenv
 # import dj_database_url
 from datetime import timedelta  
-from ninja import NinjaAPI
+# from pydantic_settings import BaseSettings
+from typing import List
+import os
+# from agro_linker.models.user import *
+# from .user import *
 
 load_dotenv()
 # Define the base directory
@@ -13,7 +17,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Load Environment Variables
 load_dotenv(BASE_DIR / ".env")
 
-
+# CORS Origins
+ALLOWED_ORIGINS: List[str] = [
+    "http://localhost:3000",  # React frontend
+    "http://localhost:8000",  # Django admin
+]
+    
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = getenv("SECRET_KEY")
@@ -28,14 +37,13 @@ YOUR_DOMAIN = os.getenv("YOUR_DOMAIN", "http://127.0.0.1:8000")
 
 # For production with domains, use:
 ALLOWED_HOSTS = ['*']  # Not recommended for production
-# settings.py
-ALLOWED_HOSTS = ['localhost', '127.0.0.1']  # Should include these
+
+API_V1_STR: str = "/v1"
+PROJECT_NAME: str = "AgroLinker"
 
 
-
-
-
-
+ALGORITHM: str = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 
 
 
@@ -238,9 +246,10 @@ SECURE_HSTS_PRELOAD = True
 # HTTPS=on
 # FORCE_SSL=1
 # SECURE_SSL_REDIRECT=1
+SITE_ID = 1
 
-# Custom user model
-AUTH_USER_MODEL = 'agro_linker.User'
+# # Custom user model
+# AUTH_USER_MODEL = 'agro_linker.User'
 
 # Rest Framework settings
 REST_FRAMEWORK = {
@@ -267,11 +276,11 @@ SIMPLE_JWT = {
     'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
 }
 
-api = NinjaAPI(
-    title="Agro Linker API",
-    version="1.0.0",
-    description="API for the Agro Linker platform",
-    docs_url="/docs",
-    openapi_url="/openapi.json",
-    urls_namespace="agro_linker_api"
-)
+# api = NinjaAPI(
+#     title="Agro Linker API",
+#     version="1.0.0",
+#     description="API for the Agro Linker platform",
+#     docs_url="/docs",
+#     openapi_url="/openapi.json",
+#     urls_namespace="agro_linker_api"
+# )
