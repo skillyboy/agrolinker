@@ -1,0 +1,19 @@
+project/
+├── project/
+│   └── urls.py                  # Main URL configuration
+├── agro_linker/
+│   ├── urls.py                  # App-level URL configuration
+│   ├── api/
+│   │   ├── v1/
+│   │   │   └── router.py        # Central router registration
+│   │   ├── auth.py             # Auth endpoints with Router()
+│   │   ├── bid.py              # Bidding endpoints with Router()
+│   │   ├── chat.py             # Chat endpoints with Router()
+│   │   ├── farm.py             # Farm endpoints with Router()
+│   │   ├── market.py           # Market endpoints with Router()
+│   │   ├── microfinance.py     # Microfinance endpoints with Router()
+│   │   ├── notification.py      # Notification endpoints with Router()
+│   │   ├── orders.py           # Orders endpoints with Router()
+│   │   ├── thrift_service.py   # Thrift endpoints with Router()
+│   │   ├── weather.py          # Weather endpoints with Router()
+│   │   └── whatsapp.py         # WhatsApp endpoints with Router()

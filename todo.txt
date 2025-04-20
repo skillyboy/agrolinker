@@ -1,43 +1,77 @@
-SanDiegoEcommerce/
-├── agro_linker/                  # Main application
-│   ├── api/                      # API package
-│   │   ├── __init__.py
-│   │   ├── api.py               # Main API configuration
-│   │   ├── auth.py              # Authentication endpoints
-│   │   ├── bid.py               # Bidding endpoints
-│   │   ├── chat.py              # Chat endpoints
-│   │   ├── market.py            # Marketplace endpoints
-│   │   ├── notification.py      # Notification endpoints
-│   │   ├── orders.py            # Order endpoints
-│   │   ├── schemas.py           # Pydantic schemas
-│   │   ├── weather.py           # Weather endpoints
-│   │   └── v1/                  # Legacy v1 API (can be removed)
-│   ├── migrations/              # Database migrations
-│   ├── __init__.py
-│   ├── admin.py                 # Django admin configuration
-│   ├── apps.py                  # App configuration
-│   ├── models.py                # Database models
-│   ├── optimizations.py         # Performance optimizations
-│   ├── serializers.py           # DRF serializers (legacy)
-│   ├── tests.py                 # Test cases
-│   ├── urls.py                  # URL routing
-│   └── views.py                 # View functions
-├── project/                     # Project configuration
-│   ├── __init__.py
-│   ├── settings.py             # Django settings
-│   ├── urls.py                 # Main URL routing
-│   └── wsgi.py                 # WSGI configuration
-├── staticfiles/                # Collected static files
-├── uploads/                    # Media uploads
-├── venv/                      # Virtual environment
-├── .env                       # Environment variables
-├── .gitignore                # Git ignore rules
-├── db.sqlite3                # SQLite database
-├── manage.py                 # Django management script
-├── Procfile                  # Heroku deployment
-├── README.md                 # Project documentation
-└── requirements.txt          # Python dependencies
+# Agro Linker Technical Design Document
 
+## 1. High-Level Architecture
+
+### Service Architecture
+```mermaid
+graph TD
+    Client[Web/Mobile Clients] --> API_Gateway[API Gateway]
+    WhatsApp[WhatsApp Users] --> WA_API[WhatsApp Cloud API]
+    WA_API --> Communication_Service
+    
+    API_Gateway --> Auth_Service[Authentication Service - Django]
+    API_Gateway --> Market_Service[Marketplace Service - FastAPI]
+    API_Gateway --> Finance_Service[Financial Service - FastAPI]
+    API_Gateway --> Logistics_Service[Logistics Service - FastAPI]
+    API_Gateway --> Communication_Service[Communication Service - FastAPI]
+    
+    Market_Service --> Message_Queue[(Message Queue - RabbitMQ)]
+    Finance_Service --> Message_Queue
+    Logistics_Service --> Message_Queue
+    
+    Auth_Service --> User_DB[(User Database)]
+    Market_Service --> Market_DB[(Market Database)]
+    Finance_Service --> Finance_DB[(Finance Database)]
+    Logistics_Service --> Logistics_DB[(Logistics Database)]
+    
+    Market_Service --> Cache[(Redis Cache)]
+    Communication_Service --> Cache
+```
+
+### Data Flow Patterns
+1. **User Authentication Flow**
+   - Client requests → API Gateway → Auth Service
+   - JWT token generation and validation
+   - Role-based access control
+
+2. **Marketplace Flow**
+   - Real-time price updates via WebSocket
+   - Bid notifications through message queue
+   - Cache layer for frequent market data
+
+3. **Financial Services Flow**
+   - Async loan processing via message queue
+   - Transaction consistency with saga pattern
+   - Event-driven updates for loan status
+
+### Integration Points
+1. **WhatsApp Cloud API**
+   - Webhook endpoints for message handling
+   - State management in Redis
+   - Async message processing
+
+2. **Twilio Integration**
+   - Voice call handling
+   - SMS notifications
+   - Webhook management
+
+3. **Payment Systems**
+   - Payment gateway integration
+   - Escrow service integration
+   - Mobile money API integration
+
+### Caching Strategy
+1. **Redis Implementation**
+   - Market prices cache (TTL: 5 minutes)
+   - User session management
+   - Rate limiting data
+
+2. **Message Queue Strategy (RabbitMQ)**
+   - Bid processing queue
+   - Notification dispatch queue
+   - Loan processing queue
+
+## 2. Database Design
 
 It looks like you’ve got a well-structured and feature-rich platform with the Agro Linker project! Here are some additional functionalities and ideas you could build out to make the platform even more robust:
 
