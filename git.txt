@@ -10,7 +10,7 @@ git push -f origin master
 git push origin main --force
 git push origin main --force-with-lease
 
-git checkout master  #Switch to the Master Branch
+git checkout main  #Switch to the Master Branch
 
 
 git init
