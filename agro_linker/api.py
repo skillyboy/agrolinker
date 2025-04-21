@@ -4,7 +4,9 @@ from ninja import NinjaAPI
 from agro_linker.schemas import *
 from agro_linker.models.models import *
 from agro_linker.api.v1.router import register_v1_routers
-
+from agro_linker.api.v1.auth import *
+from agro_linker.api.v1.notification import *
+from agro_linker.api.v1.chat import *
 
 class ApiKeyAuth(APIKeyHeader):
     def authenticate(self, request, key):

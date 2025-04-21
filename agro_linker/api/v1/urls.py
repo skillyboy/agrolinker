@@ -1,7 +1,7 @@
 # agro_linker/urls.py
 from django.urls import path
-from .router import api
+from .api import api
 
 urlpatterns = [
-    path("api/v1/", api.urls),
+    path("", api.urls),  # All APIs live under /api/v1/
 ]

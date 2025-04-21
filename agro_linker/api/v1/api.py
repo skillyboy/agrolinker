@@ -1,8 +1,7 @@
 # agro_linker/api/api.py
-from ninja.security import APIKeyHeader
 from ninja import NinjaAPI
-from agro_linker.schemas import *
-from agro_linker.models.models import *
+from .router import router
+from ninja.security import APIKeyHeader
 
 class ApiKeyAuth(APIKeyHeader):
     def authenticate(self, request, key):
@@ -12,15 +11,16 @@ class ApiKeyAuth(APIKeyHeader):
         except APIToken.DoesNotExist:
             return None
 
-# Create single API instance
+# Create the API instance
 api = NinjaAPI(
     title="Agro Linker API",
     version="2.0",
     auth=[ApiKeyAuth()],
-    docs_decorator=lambda f: f,
+    docs_url="/docs",   # exposed at /api/v1/docs
+    openapi_url="/openapi.json",
     csrf=True,
     urls_namespace="api_current"
 )
 
-# Import all route modules
-from . import auth, bid, chat, farm, market, microfinance, notification, orders, thrift_service, weather, whatsapp
+# Register your central router
+api.add_router("v1/", router)

@@ -22,6 +22,9 @@ logger = logging.getLogger(__name__)
 
 
 router = Router(tags=["Microfinance"])
+@router.get("/status")
+def status(request):
+    return {"service": "microservice", "status": "running"}
 
 # Helper Functions Implementation
 def generate_loan_reference():

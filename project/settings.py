@@ -9,6 +9,7 @@ from typing import List
 import os
 # from agro_linker.models.user import *
 # from .user import *
+from dotenv import load_dotenv
 
 load_dotenv()
 # Define the base directory
@@ -274,12 +275,3 @@ SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=30),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
 }
-
-# api = NinjaAPI(
-#     title="Agro Linker API",
-#     version="1.0.0",
-#     description="API for the Agro Linker platform",
-#     docs_url="/docs",
-#     openapi_url="/openapi.json",
-#     urls_namespace="agro_linker_api"
-# )

@@ -1,9 +1,11 @@
 from django.db.models import Sum
 from django.db import transaction
 from agro_linker.models.thrift import ThriftGroup, ThriftPayout, ThriftContribution
+from ninja import Router
 
+router = Router(tags=["Thrift Service"])
 
-
+@router.post("/rotate-payout/{group_id}")
 def rotate_payout(group_id):
     group = ThriftGroup.objects.get(id=group_id)
     members = group.thriftmembership_set.filter(is_active=True)
@@ -35,6 +37,7 @@ def rotate_payout(group_id):
     
     return payout
 
+@router.post("/create-thrift-group")
 def create_thrift_group(group_data: dict):
     group = ThriftGroup.objects.create(**group_data)
     return group
