@@ -2,7 +2,6 @@ from django.shortcuts import get_object_or_404
 from django.db import transaction
 from django.http import HttpRequest
 from agro_linker.models.models import Product, Order, FarmerProfile
-from agro_linker.api.auth import AuthBearer  # Assuming you have a proper auth implementation
 from ...schemas import *
 from datetime import datetime
 from django.db.models import Q
@@ -10,12 +9,12 @@ from ninja import Router
 from agro_linker.models.models import ChatMessage
 from .auth import AuthBearer
 import logging
+    
 
 router = Router(tags=["Chat"])
 logger = logging.getLogger(__name__)
 
-# ====================== ENDPOINTS ======================
-
+# ====================== ENDPOINTS ====================
 def get_user_profile(request: HttpRequest):
     if hasattr(request.auth, 'farmer_profile'):
         profile = request.auth.farmer_profile

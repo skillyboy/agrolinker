@@ -3,6 +3,8 @@ from ninja.security import APIKeyHeader
 from ninja import NinjaAPI
 from agro_linker.schemas import *
 from agro_linker.models.models import *
+from agro_linker.api.v1.router import register_v1_routers
+
 
 class ApiKeyAuth(APIKeyHeader):
     def authenticate(self, request, key):
@@ -30,3 +32,9 @@ def register_all_routers():
     register_v1_routers(api)
 
 register_all_routers()
+
+
+
+
+
+

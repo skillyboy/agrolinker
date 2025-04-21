@@ -8,8 +8,8 @@ from django.shortcuts import get_object_or_404
 from django.db import transaction
 from django.http import JsonResponse
 from django.contrib.auth.models import User
-from ..models.models import *
-from ..schemas import *
+from ...models.models import *
+from ...schemas import *
 from .auth import AuthBearer
 import logging
 
@@ -26,10 +26,6 @@ from django.db import transaction
 from django.db.models import Q
 from django.http import HttpRequest
 from django.contrib.auth.models import User
-from ..models.models import *
-from ..schemas import *
-from .auth import AuthBearer
-import logging
 
 # Setup logger for debugging and error logging
 logger = logging.getLogger(__name__)

@@ -1,6 +1,7 @@
 from django.db.models import Sum
 from django.db import transaction
-from ...models import ThriftGroup, ThriftMembership, ThriftPayout, ThriftContribution
+from agro_linker.models.thrift import ThriftGroup, ThriftPayout, ThriftContribution
+
 
 
 def rotate_payout(group_id):

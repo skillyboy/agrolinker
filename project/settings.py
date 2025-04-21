@@ -70,15 +70,15 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     "rest_framework",
+    "rest_framework_simplejwt",     
     # 'afriapp',
     'agro_linker',
+    "ninja",
+    "corsheaders",
+    "django_redis",
+    # "django.contrib.postgres",  # For PostgreSQL specific features
 
-    'ninja',
-    'corsheaders',
-    'django_redis',
-    'django.contrib.postgres',  # For PostgreSQL specific features
 ]
-
 
 CACHES = {
     "default": {
@@ -232,6 +232,8 @@ USE_TZ = True
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+# Custom User Model
+AUTH_USER_MODEL = 'agro_linker.User'
 
 # Security settings
 SECURE_SSL_REDIRECT = False
@@ -247,9 +249,6 @@ SECURE_HSTS_PRELOAD = True
 # FORCE_SSL=1
 # SECURE_SSL_REDIRECT=1
 SITE_ID = 1
-
-# # Custom user model
-# AUTH_USER_MODEL = 'agro_linker.User'
 
 # Rest Framework settings
 REST_FRAMEWORK = {

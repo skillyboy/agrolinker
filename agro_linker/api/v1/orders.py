@@ -8,15 +8,13 @@ import logging
 from django.http import HttpRequest
 from django.contrib.auth import authenticate
 from datetime import datetime
-from agro_linker.api.market import *
 from agro_linker.models.models import *
-from agro_linker.api.market import *
-from agro_linker.api.bid import *
 from agro_linker.schemas import *
 from ...schemas import *
 from .auth import *
 from .notification import *
 from .chat import *
+from .bid import *
 
 # ====================== API SETUP ======================
 router = Router(tags=["Orders"])    

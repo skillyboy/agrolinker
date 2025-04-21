@@ -1,6 +1,10 @@
 # agro_linker/api/v1/router.py
 from ninja import NinjaAPI
-from .api import auth, bid, chat, farm, market, microfinance, notification, orders, thrift_service, weather, whatsapp
+from agro_linker.api.v1.endpoints import all_endpoints
+from agro_linker.api.v1.api import auth, bid, chat, farm, market, microfinance, notification, orders, thrift_service, weather, whatsapp
+
+from api.v1 import api
+
 
 api = NinjaAPI(title="AgroLinker API", version="1.0")
 

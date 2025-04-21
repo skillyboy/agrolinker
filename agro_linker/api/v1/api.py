@@ -22,11 +22,5 @@ api = NinjaAPI(
     urls_namespace="api_current"
 )
 
-
-
-def register_all_routers():
-    """Register all API routers"""
-    from agro_linker.api.v1.router import register_v1_routers
-    register_v1_routers(api)
-
-register_all_routers()
+# Import all route modules
+from . import auth, bid, chat, farm, market, microfinance, notification, orders, thrift_service, weather, whatsapp

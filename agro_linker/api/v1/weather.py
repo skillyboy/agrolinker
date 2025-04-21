@@ -5,10 +5,10 @@ from typing import List, Optional
 from ninja import Router, Schema, Query
 from django.shortcuts import get_object_or_404
 from django.http import HttpRequest
-from ..models.models import WeatherData
 from datetime import datetime, date, timedelta
 from random import uniform
-from ..schemas import *
+from agro_linker.models.models import WeatherData
+from agro_linker.schemas import *
 
 router = Router(tags=["Weather Data"])
 

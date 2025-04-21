@@ -4,7 +4,7 @@ from ninja.errors import HttpError
 from typing import List
 from .auth import AuthBearer
 # from .notification import notify_loan_update  
-from ..schemas import *
+from ...schemas import *
 from django.http import HttpRequest
 import hashlib
 import hmac
@@ -17,8 +17,7 @@ from django.db import transaction
 from django.http import JsonResponse
 from django.contrib.auth.models import User
 from ninja import Router
-from ..models.models import *
-from agro_linker.api import *
+from agro_linker.models.models import *
 logger = logging.getLogger(__name__)
 
 

@@ -4,21 +4,22 @@ from django.core.validators import MinValueValidator, MaxValueValidator, RegexVa
 from django.utils.translation import gettext_lazy as _
 import uuid
 
-class UserManager(BaseUserManager):
-    def create_user(self, phone, password=None, **extra_fields):
-        if not phone:
-            raise ValueError('Phone number is required')
-        user = self.model(phone=phone, **extra_fields)
-        user.set_password(password)
-        user.save(using=self._db)
-        return user
+from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, UserManager as DefaultUserManager
+from django.db import models
+from django.utils.translation import gettext_lazy as _
+from django.core.validators import RegexValidator
+import uuid
 
-    def create_superuser(self, phone, password):
-        user = self.create_user(phone, password)
-        user.is_staff = True
-        user.is_superuser = True
-        user.save(using=self._db)
-        return user
+
+# Custom UserManager to handle active users only and other user-related queries
+class UserManager(DefaultUserManager):
+    def get_queryset(self):
+        return super().get_queryset().filter(is_active=True)
+
+    # Optional: You can define additional custom querysets if needed
+    def active_users(self):
+        return self.get_queryset().filter(is_active=True)
+
 
 class User(AbstractBaseUser, PermissionsMixin):
     class Role(models.TextChoices):
@@ -27,7 +28,8 @@ class User(AbstractBaseUser, PermissionsMixin):
         AGENT = 'AGENT', _('Field Agent')
         ADMIN = 'ADMIN', _('Admin')
         LOGISTICS = 'LOGISTICS', _('Logistics Partner')
-    
+
+    # Core user fields
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     phone = models.CharField(max_length=15, unique=True, validators=[RegexValidator(r'^\+?1?\d{9,15}$')])
     email = models.EmailField(_('email address'), blank=True, null=True)
@@ -47,12 +49,30 @@ class User(AbstractBaseUser, PermissionsMixin):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     last_login = models.DateTimeField(null=True, blank=True)
-    
+
+    # Many to many relationships for user groups and permissions
+    groups = models.ManyToManyField(
+        'auth.Group',
+        verbose_name=_('groups'),
+        blank=True,
+        related_name='agro_linker_user_groups',  # Unique related_name
+        help_text=_('The groups this user belongs to.'),
+    )
+    user_permissions = models.ManyToManyField(
+        'auth.Permission',
+        verbose_name=_('user permissions'),
+        blank=True,
+        related_name='agro_linker_user_permissions',  # Unique related_name
+        help_text=_('Specific permissions for this user.'),
+    )
+
+    # Custom manager to manage active users
     objects = UserManager()
-    
+
+    # Django auth configuration
     USERNAME_FIELD = 'phone'
     REQUIRED_FIELDS = ['role']
-    
+
     class Meta:
         verbose_name = _('user')
         verbose_name_plural = _('users')
@@ -60,9 +80,21 @@ class User(AbstractBaseUser, PermissionsMixin):
             models.Index(fields=['phone', 'is_active']),
             models.Index(fields=['role']),
         ]
-    
+
     def __str__(self):
-        return f"{self.phone} ({self.get_role_display()})"
+        return f"{self.first_name} {self.last_name} ({self.phone}) - {self.get_role_display()}"
+
+    # Default notification preferences function for clarity and future-proofing
+    def default_notification_preferences():
+        return {'push': True, 'sms': True, 'email': False}
+
+    notification_preferences = models.JSONField(default=default_notification_preferences, blank=True)
+
+
+
+
+
+
 
 class FarmerProfile(models.Model):
     class VerificationStatus(models.TextChoices):
@@ -87,10 +119,11 @@ class FarmerProfile(models.Model):
     verification_documents = models.JSONField(null=True, blank=True)
     credit_score = models.FloatField(null=True, blank=True, validators=[MinValueValidator(0), MaxValueValidator(1000)])
     bank_details = models.JSONField(default=dict)
-    
+    cooperative = models.ForeignKey('agro_linker.Cooperative', null=True, blank=True, on_delete=models.SET_NULL)
     class Meta:
         verbose_name = _('farmer profile')
         verbose_name_plural = _('farmer profiles')
+
     
     def calculate_credit_score(self):
         pass

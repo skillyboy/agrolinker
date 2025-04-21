@@ -152,6 +152,16 @@ class BidOut(Schema):
     status: str
     created_at: datetime
 
+
+class WeatherDataOut(Schema):
+    id: int
+    location: str
+    date: date
+    temperature: float
+    humidity: float
+    precipitation: float
+    wind_speed: float
+
 class BidIn(Schema):
     product_id: str
     amount: float
